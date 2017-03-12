@@ -27,6 +27,18 @@ uint8_t pc_get_of(char *i) {
         return OPCODE(1) | FUNC(2);
     } else if (!strcmp(i, "and")) {
         return OPCODE(1) | FUNC(3);
+    } else if (!strcmp(i, "cmp")) {
+        return OPCODE(1) | FUNC(4);
+    } else if (!strcmp(i, "ld")) {
+        return OPCODE(2);
+    } else if (!strcmp(i, "st")) {
+        return OPCODE(3);
+    }  else if (!strcmp(i, "b")) {
+        return OPCODE(4) | FUNC(0);
+    } else if (!strcmp(i, "beq")) {
+        return OPCODE(4) | FUNC(1);
+    } else if (!strcmp(i, "bz")) {
+        return OPCODE(4) | FUNC(2);
     }
 
     PC_PANIC("Invalid instruction '%s'.\n", i);
@@ -44,16 +56,16 @@ uint8_t pc_get_reg(char *r) {
 
     /* See if the register is a special register. */
     if (!strcmp(rs, "pc")) {
-        rn = 0xa;
+        rn = 0x08;
         goto done;
     } else if (!strcmp(rs, "lr")) {
-        rn = 0xb;
+        rn = 0x09;
         goto done;
     } else if (!strcmp(rs, "sr")) {
-        rn = 0xc;
+        rn = 0x0a;
         goto done;
     } else if (!strcmp(rs, "sp")) {
-        rn = 0xd;
+        rn = 0x0b;
         goto done;
     }
 
@@ -83,6 +95,10 @@ error:
     PC_PANIC("Invalid register '%s'.\n", r);
 }
 
+uint8_t pc_get_imm(char *imm) {
+    return (uint8_t)atoi(imm) & 0xFF;
+}
+
 int pc_assemble_line(char *line) {
     /* Set the current line. */
     strcpy(pcl, line);
@@ -100,11 +116,11 @@ int pc_assemble_line(char *line) {
         sc = strtok(NULL, " \n");
     }
 
-    /* Print the subcomponents of each instruction. */
-    printf("OP: %s ~ ", ic[0]);
-    printf("RA: %s ~ ", ic[1]);
-    printf("RB: %s ~ ", ic[2]);
-    printf("RC: %s\n", ic[3]);
+    /* Check if the line is a label. */
+    if (line[0] == '_') {
+        printf("label: %s\n", line);
+        return 0;
+    }
 
     /* Create the instruction */
     uint16_t instruction = 0;
@@ -118,18 +134,28 @@ int pc_assemble_line(char *line) {
     switch (op) {
         /* MOV */
         case 0:
-        /* ADD, SUB, OR, AND */
+        /* ADD, SUB, OR, AND, CMP */
         case 1:
             /* Load $rd. */
             instruction |= (pc_get_reg(ic[1]) & 0xF) << 4;
             /* Load $rs. */
             instruction |= pc_get_reg(ic[2]) & 0xF;
             break;
+        /* LD */
+        case 2:
+        /* ST */
+        case 3:
+            instruction |= (pc_get_reg(ic[1]) & 0xF) << 8;
+            instruction |= pc_get_imm(ic[2]) & 0xFF;
+            break;
+        /* B, BEQ, BZ */
+        case 4:
+            instruction |= pc_get_imm(ic[1]) & 0xFF;
+            break;
         default:
             PC_PANIC("Invalid opcode '0x%02x'.\n", op);
             break;
     }
-
 
     /* Write the instruction to the file. */
     fputc(instruction & 0xFF, bf);
