@@ -15,35 +15,57 @@ FILE *bf;
                       fprintf(stderr, ##__VA_ARGS__); \
                       exit(EXIT_FAILURE);
 
+/* OPS */
+#define MOV_OP 0
+#define MOVI_OP 1
+#define ALU_OP 2
+#define LD_OP 3
+#define ST_OP 4
+#define B_OP 5
+/* ALU */
+#define ADD_FUNC 0
+#define SUB_FUNC 1
+#define OR_FUNC 2
+#define AND_FUNC 3
+#define CMP_FUNC 4
+/* BRANCH */
+#define B_FUNC 0
+#define BEQ_FUNC 1
+#define BZ_FUNC 2
+
+/* Returns the opcode and function for a given instruction mnemonic. */
 uint8_t pc_get_of(char *i) {
     /* Return the opcode corresponding to each instruction mnemonic. */
     if (!strcmp(i, "mov")) {
-        return OPCODE(0) | FUNC(0);
+        return OPCODE(MOV_OP);
+    } else if (!strcmp(i, "movi")) {
+        return OPCODE(MOVI_OP);
     } else if (!strcmp(i, "add")) {
-        return OPCODE(1) | FUNC(0);
+        return OPCODE(ALU_OP) | FUNC(ADD_FUNC);
     } else if (!strcmp(i, "sub")) {
-        return OPCODE(1) | FUNC(1);
+        return OPCODE(ALU_OP) | FUNC(SUB_FUNC);
     } else if (!strcmp(i, "or")) {
-        return OPCODE(1) | FUNC(2);
+        return OPCODE(ALU_OP) | FUNC(OR_FUNC);
     } else if (!strcmp(i, "and")) {
-        return OPCODE(1) | FUNC(3);
+        return OPCODE(ALU_OP) | FUNC(AND_FUNC);
     } else if (!strcmp(i, "cmp")) {
-        return OPCODE(1) | FUNC(4);
+        return OPCODE(ALU_OP) | FUNC(CMP_FUNC);
     } else if (!strcmp(i, "ld")) {
-        return OPCODE(2);
+        return OPCODE(LD_OP);
     } else if (!strcmp(i, "st")) {
-        return OPCODE(3);
+        return OPCODE(ST_OP);
     }  else if (!strcmp(i, "b")) {
-        return OPCODE(4) | FUNC(0);
+        return OPCODE(B_OP) | FUNC(B_FUNC);
     } else if (!strcmp(i, "beq")) {
-        return OPCODE(4) | FUNC(1);
+        return OPCODE(B_OP) | FUNC(BEQ_FUNC);
     } else if (!strcmp(i, "bz")) {
-        return OPCODE(4) | FUNC(2);
+        return OPCODE(B_OP) | FUNC(BZ_FUNC);
     }
-
+    /* If we get here, an invalid instruction mnemonic was provided. */
     PC_PANIC("Invalid instruction '%s'.\n", i);
 }
 
+/* Returns the register file number for a given register mnemonic. */
 uint8_t pc_get_reg(char *r) {
 
     /* The modifiable register string. */
@@ -73,6 +95,7 @@ uint8_t pc_get_reg(char *r) {
     char rtc = *rs ++;
     /* The next character is the register number. */
     char rnc = *rs;
+    /* Ensure that the register is in the valid range. */
     if (rnc < '0' || rnc > '4') {
         PC_PANIC("Invalid register '%s'. Register numbers must be in range 0-3.\n", r);
     }
@@ -133,23 +156,25 @@ int pc_assemble_line(char *line) {
 
     switch (op) {
         /* MOV */
-        case 0:
+        case MOV_OP:
         /* ADD, SUB, OR, AND, CMP */
-        case 1:
+        case ALU_OP:
             /* Load $rd. */
             instruction |= (pc_get_reg(ic[1]) & 0xF) << 4;
             /* Load $rs. */
             instruction |= pc_get_reg(ic[2]) & 0xF;
             break;
+        /* MOVI */
+        case MOVI_OP:
         /* LD */
-        case 2:
+        case LD_OP:
         /* ST */
-        case 3:
+        case ST_OP:
             instruction |= (pc_get_reg(ic[1]) & 0xF) << 8;
             instruction |= pc_get_imm(ic[2]) & 0xFF;
             break;
         /* B, BEQ, BZ */
-        case 4:
+        case B_OP:
             instruction |= pc_get_imm(ic[1]) & 0xFF;
             break;
         default:
@@ -165,6 +190,14 @@ int pc_assemble_line(char *line) {
 }
 
 int main(int argc, char *argv[]) {
+
+    if (argc < 2) {
+        fprintf(stderr, "Please provide a path to the assembly source file.\n");
+        goto usage;
+    } else if (argc < 3) {
+        fprintf(stderr, "Please provide a path to the output binary file.\n");
+        goto usage;
+    }
 
     /* Load the assembly file. */
     char *sfp = argv[1];
@@ -193,5 +226,11 @@ int main(int argc, char *argv[]) {
         pc_assemble_line(l);
     }
 
-    return 0;
+    return 1;
+
+usage:
+
+    fprintf(stderr, "\npas [source.s] [output.bin]\n");
+
+    return 1;
 }

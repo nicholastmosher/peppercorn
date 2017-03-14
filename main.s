@@ -8,3 +8,4 @@ ld $t0, 12
 st $t0, 255
 b 10
 cmp $t0, $t1
+movi $a0, 255
