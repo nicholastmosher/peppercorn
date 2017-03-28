@@ -1,6 +1,7 @@
 /* Peppercorn assembler. */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 /* The current line being assembled. */
